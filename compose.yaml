@@ -1,0 +1,37 @@
+services:
+  app:
+    build: .
+    image: leo-radiation-monitor:latest
+    environment:
+      APP_HOST: "0.0.0.0"
+      APP_PORT: "8080"
+      DB_PATH: /data/radiation.db
+      ALLOWED_LATENESS_SECONDS: "30"
+      ALARM_THRESHOLD: "100"
+      PROBES: "probe-a,probe-b"
+    ports:
+      - "${APP_HOST_PORT:-8080}:${APP_PORT:-8080}"
+    volumes:
+      - radiation-data:/data
+    healthcheck:
+      test: ["CMD", "python", "scripts/healthcheck.py"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 3s
+    restart: unless-stopped
+
+  verify:
+    image: leo-radiation-monitor:latest
+    build: .
+    profiles: ["verify"]
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      BASE_URL: "http://app:8080"
+    entrypoint: ["bash", "scripts/verify.sh"]
+    restart: "no"
+
+volumes:
+  radiation-data:
